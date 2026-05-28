@@ -33,6 +33,18 @@ class UR5StyleArm:
         pin.framesForwardKinematics(self.model, self.data, q)
         return self.data.oMf[self.ee_frame_id]
 
+    def _base_frame_jacobian(self, q: np.ndarray) -> np.ndarray:
+        q = self._validate_vector(q, name="q")
+        pin.computeJointJacobians(self.model, self.data, q)
+        pin.updateFramePlacements(self.model, self.data)
+        return pin.computeFrameJacobian(
+            self.model,
+            self.data,
+            q,
+            self.ee_frame_id,
+            pin.ReferenceFrame.LOCAL_WORLD_ALIGNED,
+        )
+
     @staticmethod
     def _left_gram(matrix: np.ndarray) -> np.ndarray:
         return np.einsum("ik,jk->ij", matrix, matrix)
@@ -127,3 +139,16 @@ class UR5StyleArm:
             position_error_norm=position_error_norm,
             orientation_error_norm=orientation_error_norm,
         )
+
+    def forward_velocity(self, q: np.ndarray, qdot: np.ndarray) -> np.ndarray:
+        q = self._validate_vector(q, name="q")
+        qdot = self._validate_vector(qdot, name="qdot")
+        jacobian = self._base_frame_jacobian(q)
+        return self._matvec(jacobian, qdot)
+
+    def inverse_velocity(self, q: np.ndarray, ee_twist: np.ndarray, damping: float = 1e-6) -> np.ndarray:
+        q = self._validate_vector(q, name="q")
+        ee_twist = self._validate_vector(ee_twist, name="ee_twist")
+        jacobian = self._base_frame_jacobian(q)
+        lhs = self._left_gram(jacobian) + damping * np.eye(6)
+        return self._matvec(jacobian.T, self._solve_linear_system(lhs, ee_twist))
