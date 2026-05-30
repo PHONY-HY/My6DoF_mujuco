@@ -5,10 +5,18 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ur5-style-arm"
 version = "0.1.0"
-description = "Pinocchio-based UR5-style 6DOF arm kinematics toolkit"
+description = "Pinocchio and MuJoCo based 6DOF arm toolkit with standalone task environments"
 requires-python = ">=3.10"
 dependencies = [
+  "dm_control",
+  "dm_env",
+  "h5py",
+  "matplotlib",
+  "mujoco>=3.2",
   "numpy>=1.26",
+  "opencv-python",
+  "pyquaternion",
+  "tqdm",
 ]
 
 [project.optional-dependencies]
@@ -17,7 +25,5 @@ dev = [
 ]
 
 [tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
+packages = ["ur5_style_arm", "mujoco_control", "tasks"]
+package-dir = {ur5_style_arm = "src/ur5_style_arm", mujoco_control = "mujoco_control", tasks = "tasks"}

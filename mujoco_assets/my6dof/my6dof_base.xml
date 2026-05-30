@@ -1,0 +1,71 @@
+<mujoco model="my6dof_base">
+  <compiler angle="radian" autolimits="true"/>
+  <option gravity="0 0 -9.81" integrator="implicitfast" timestep="0.002"/>
+
+  <default>
+    <joint damping="1.0" armature="0.01" limited="true"/>
+    <geom contype="1" conaffinity="1" friction="0.8 0.1 0.1" rgba="0.3 0.5 0.8 1"/>
+    <position kp="100"/>
+  </default>
+
+  <worldbody>
+    <body name="robot_base" pos="0 0 0">
+      <geom name="base_geom" type="cylinder" size="0.05 0.02" rgba="0.2 0.2 0.2 1"/>
+
+      <body name="link1" pos="0 0 0.089159">
+        <joint name="joint_1" type="hinge" axis="0 0 1" range="-6.28319 6.28319"/>
+        <geom name="link1_geom" type="capsule" fromto="0 0 0 0 0 0.08" size="0.03"/>
+
+        <body name="link2" pos="0 0 0">
+          <joint name="joint_2" type="hinge" axis="0 1 0" range="-3.14159 0"/>
+          <geom name="link2_geom" type="capsule" fromto="0 0 0 0.425 0 0" size="0.025"/>
+
+          <body name="link3" pos="0.425 0 0">
+            <joint name="joint_3" type="hinge" axis="0 1 0" range="-3.14159 3.14159"/>
+            <geom name="link3_geom" type="capsule" fromto="0 0 0 0.39225 0 0" size="0.022"/>
+
+            <body name="link4" pos="0.39225 0 0">
+              <joint name="joint_4" type="hinge" axis="0 1 0" range="-6.28319 6.28319"/>
+              <geom name="link4_geom" type="capsule" fromto="0 0 0 0 0 0.10915" size="0.02"/>
+
+              <body name="link5" pos="0 0 0.10915">
+                <joint name="joint_5" type="hinge" axis="0 0 1" range="-6.28319 6.28319"/>
+                <geom name="link5_geom" type="capsule" fromto="0 0 0 0 0 0.09465" size="0.018"/>
+
+                <body name="link6" pos="0 0 0.09465">
+                  <joint name="joint_6" type="hinge" axis="0 1 0" range="-6.28319 6.28319"/>
+                  <geom name="link6_geom" type="capsule" fromto="0 0 0 0 0 0.0823" size="0.016"/>
+
+                  <body name="gripper_mount" pos="0 0 0.0823">
+                    <site name="ee_site" pos="0 0 0" size="0.01" rgba="0 1 0 1"/>
+
+                    <body name="left_finger" pos="0 0.02 0">
+                      <joint name="left_finger_joint" type="slide" axis="0 1 0" range="0 0.04"/>
+                      <geom name="left_finger_geom" type="box" size="0.01 0.02 0.01" pos="0 0.02 0" rgba="0.7 0.7 0.7 1"/>
+                    </body>
+
+                    <body name="right_finger" pos="0 -0.02 0">
+                      <joint name="right_finger_joint" type="slide" axis="0 -1 0" range="0 0.04"/>
+                      <geom name="right_finger_geom" type="box" size="0.01 0.02 0.01" pos="0 -0.02 0" rgba="0.7 0.7 0.7 1"/>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="joint_1_ctrl" joint="joint_1" ctrlrange="-6.28319 6.28319"/>
+    <position name="joint_2_ctrl" joint="joint_2" ctrlrange="-3.14159 0"/>
+    <position name="joint_3_ctrl" joint="joint_3" ctrlrange="-3.14159 3.14159"/>
+    <position name="joint_4_ctrl" joint="joint_4" ctrlrange="-6.28319 6.28319"/>
+    <position name="joint_5_ctrl" joint="joint_5" ctrlrange="-6.28319 6.28319"/>
+    <position name="joint_6_ctrl" joint="joint_6" ctrlrange="-6.28319 6.28319"/>
+    <position name="left_finger_ctrl" joint="left_finger_joint" ctrlrange="0 0.04"/>
+    <position name="right_finger_ctrl" joint="right_finger_joint" ctrlrange="0 0.04"/>
+  </actuator>
+</mujoco>

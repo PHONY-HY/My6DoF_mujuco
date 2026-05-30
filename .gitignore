@@ -7,3 +7,5 @@ dist/
 build/
 *.egg-info/
 pytest-cache-files-*/
+logs/
+temp-condarc-tuna.yml
