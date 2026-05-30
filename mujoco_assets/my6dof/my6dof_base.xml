@@ -39,14 +39,14 @@
                   <body name="gripper_mount" pos="0 0 0.0823">
                     <site name="ee_site" pos="0 0 0" size="0.01" rgba="0 1 0 1"/>
 
-                    <body name="left_finger" pos="0 0.02 0">
-                      <joint name="left_finger_joint" type="slide" axis="0 1 0" range="0 0.04"/>
-                      <geom name="left_finger_geom" type="box" size="0.01 0.02 0.01" pos="0 0.02 0" rgba="0.7 0.7 0.7 1"/>
+                    <body name="left_finger" pos="0 0 0">
+                      <joint name="left_finger_joint" type="slide" axis="0 1 0" range="0 0.025"/>
+                      <geom name="left_finger_geom" type="box" size="0.008 0.02 0.01" pos="0 0.022 0" rgba="0.7 0.7 0.7 1"/>
                     </body>
 
-                    <body name="right_finger" pos="0 -0.02 0">
-                      <joint name="right_finger_joint" type="slide" axis="0 -1 0" range="0 0.04"/>
-                      <geom name="right_finger_geom" type="box" size="0.01 0.02 0.01" pos="0 -0.02 0" rgba="0.7 0.7 0.7 1"/>
+                    <body name="right_finger" pos="0 0 0">
+                      <joint name="right_finger_joint" type="slide" axis="0 -1 0" range="0 0.025"/>
+                      <geom name="right_finger_geom" type="box" size="0.008 0.02 0.01" pos="0 -0.022 0" rgba="0.7 0.7 0.7 1"/>
                     </body>
                   </body>
                 </body>
@@ -65,7 +65,7 @@
     <position name="joint_4_ctrl" joint="joint_4" ctrlrange="-6.28319 6.28319"/>
     <position name="joint_5_ctrl" joint="joint_5" ctrlrange="-6.28319 6.28319"/>
     <position name="joint_6_ctrl" joint="joint_6" ctrlrange="-6.28319 6.28319"/>
-    <position name="left_finger_ctrl" joint="left_finger_joint" ctrlrange="0 0.04"/>
-    <position name="right_finger_ctrl" joint="right_finger_joint" ctrlrange="0 0.04"/>
+    <position name="left_finger_ctrl" joint="left_finger_joint" ctrlrange="0 0.025"/>
+    <position name="right_finger_ctrl" joint="right_finger_joint" ctrlrange="0 0.025"/>
   </actuator>
 </mujoco>

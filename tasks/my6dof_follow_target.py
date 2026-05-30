@@ -9,6 +9,7 @@ import numpy as np
 
 from mujoco_control import DifferentialIKController
 from tasks.recording import TrajectoryFrame, TrajectoryRecorder
+from ur5_style_arm.robot_model import NEUTRAL_Q
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,13 @@ class FollowTargetTask:
         self.target_body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "follow_target")
         self.target_mocap_id = int(self.model.body_mocapid[self.target_body_id])
         self.recorder = TrajectoryRecorder(record_path) if record_path is not None else None
+        self._initialize_home_pose()
+
+    def _initialize_home_pose(self) -> None:
+        self.controller.set_arm_joint_positions(NEUTRAL_Q)
+        self.controller.set_gripper_opening(0.02)
+        self.data.mocap_quat[self.target_mocap_id] = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
+        mujoco.mj_forward(self.model, self.data)
 
     def _target_pose(self) -> dict[str, list[float]]:
         return {
@@ -51,6 +59,7 @@ class FollowTargetTask:
     def step_to_target(self, target_position: np.ndarray, controller_steps: int = 10) -> TrajectoryFrame:
         target_position = np.asarray(target_position, dtype=float)
         self.data.mocap_pos[self.target_mocap_id] = target_position
+        mujoco.mj_forward(self.model, self.data)
 
         for _ in range(controller_steps):
             self.controller.step_to_position(target_position)

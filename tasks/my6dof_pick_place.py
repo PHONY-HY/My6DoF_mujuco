@@ -8,7 +8,9 @@ import mujoco
 import numpy as np
 
 from mujoco_control import DifferentialIKController
+from tasks.pick_place_plan import build_pick_place_plan
 from tasks.recording import TrajectoryFrame, TrajectoryRecorder
+from ur5_style_arm.robot_model import NEUTRAL_Q
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +36,16 @@ class PickPlaceTask:
 
         self.cube_attached = False
         self.attach_offset = np.array([0.0, 0.0, -0.05], dtype=float)
+        self.phase_index = 0
+        self.phase_tick = 0
+        self.phase_duration = 35
+        self._initialize_home_pose()
+
+    def _initialize_home_pose(self) -> None:
+        self.controller.set_arm_joint_positions(NEUTRAL_Q)
+        self.controller.set_gripper_opening(0.04)
+        self.data.mocap_quat[self.place_target_mocap_id] = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
+        mujoco.mj_forward(self.model, self.data)
 
     def _set_cube_pose(self, position: np.ndarray, quaternion: np.ndarray | None = None) -> None:
         quaternion = np.array([1.0, 0.0, 0.0, 0.0], dtype=float) if quaternion is None else np.asarray(quaternion, dtype=float)
@@ -76,6 +88,7 @@ class PickPlaceTask:
     def _step_with_target(self, target_position: np.ndarray, gripper_opening: float, controller_steps: int = 10) -> TrajectoryFrame:
         target_position = np.asarray(target_position, dtype=float)
         self._set_gripper(gripper_opening)
+        mujoco.mj_forward(self.model, self.data)
         for _ in range(controller_steps):
             self.controller.step_to_position(target_position)
             if self.cube_attached:
@@ -104,22 +117,19 @@ class PickPlaceTask:
 
         pick_position = self.model.body_pos[self.pick_target_body_id].copy()
         cube_position = self.data.xpos[self.cube_body_id].copy()
-        hover_position = pick_position + np.array([0.0, 0.0, 0.08], dtype=float)
-        grasp_position = cube_position + np.array([0.0, 0.0, 0.05], dtype=float)
-        lift_position = cube_position + np.array([0.0, 0.0, 0.15], dtype=float)
         place_position = self.data.mocap_pos[self.place_target_mocap_id].copy()
-        place_hover = place_position + np.array([0.0, 0.0, 0.08], dtype=float)
 
-        frames.append(self._step_with_target(hover_position, gripper_opening=0.04))
-        frames.append(self._step_with_target(grasp_position, gripper_opening=0.04))
-        frames.append(self._step_with_target(grasp_position, gripper_opening=0.0))
-        self._try_attach_cube()
-        frames.append(self._step_with_target(lift_position, gripper_opening=0.0))
-        frames.append(self._step_with_target(place_hover, gripper_opening=0.0))
-        frames.append(self._step_with_target(place_position, gripper_opening=0.0))
-        frames.append(self._step_with_target(place_position, gripper_opening=0.04))
-        self.cube_attached = False
-        frames.append(self._step_with_target(place_hover, gripper_opening=0.04))
+        for step in build_pick_place_plan(pick_position, cube_position, place_position):
+            frames.append(
+                self._step_with_target(
+                    step["target_position"],
+                    gripper_opening=step["gripper_opening"],
+                )
+            )
+            if step["name"] == "close_gripper":
+                self._try_attach_cube()
+            if step["name"] == "open_gripper":
+                self.cube_attached = False
 
         return frames
 
@@ -129,8 +139,24 @@ class PickPlaceTask:
         with mujoco.viewer.launch_passive(self.model, self.data) as viewer:
             step_count = 0
             while viewer.is_running():
-                place_target = self.data.mocap_pos[self.place_target_mocap_id].copy()
-                self._step_with_target(place_target, gripper_opening=0.02, controller_steps=1)
+                plan = build_pick_place_plan(
+                    self.model.body_pos[self.pick_target_body_id].copy(),
+                    self.data.xpos[self.cube_body_id].copy(),
+                    self.data.mocap_pos[self.place_target_mocap_id].copy(),
+                )
+                step = plan[self.phase_index]
+                self._step_with_target(step["target_position"], gripper_opening=step["gripper_opening"], controller_steps=1)
+
+                if step["name"] == "close_gripper" and self.phase_tick == self.phase_duration // 2:
+                    self._try_attach_cube()
+                if step["name"] == "open_gripper" and self.phase_tick == 0:
+                    self.cube_attached = False
+
+                self.phase_tick += 1
+                if self.phase_tick >= self.phase_duration:
+                    self.phase_tick = 0
+                    if self.phase_index < len(plan) - 1:
+                        self.phase_index += 1
                 viewer.sync()
                 time.sleep(self.model.opt.timestep)
                 step_count += 1

@@ -97,14 +97,22 @@ class DifferentialIKController:
     def current_end_effector_position(self) -> np.ndarray:
         return self.data.site_xpos[self.ee_site_id].copy()
 
+    def set_arm_joint_positions(self, q: np.ndarray) -> np.ndarray:
+        q = np.asarray(q, dtype=float)
+        self.data.qpos[self.arm_qpos_adr] = q
+        for actuator_id, value in zip(self.arm_actuator_ids, q):
+            self.data.ctrl[actuator_id] = value
+        return q.copy()
+
     def set_gripper_opening(self, opening: float) -> dict[str, float]:
-        opening = float(np.clip(opening, 0.0, 0.04))
+        opening = float(np.clip(opening, 0.0, 0.025))
         self.data.ctrl[self.left_gripper_actuator_id] = opening
         self.data.ctrl[self.right_gripper_actuator_id] = opening
         return {"left": opening, "right": opening}
 
     def step_to_position(self, target_position: np.ndarray) -> np.ndarray:
         target_position = np.asarray(target_position, dtype=float)
+        mujoco.mj_forward(self.model, self.data)
 
         jacp = np.zeros((3, self.model.nv), dtype=float)
         jacr = np.zeros((3, self.model.nv), dtype=float)
