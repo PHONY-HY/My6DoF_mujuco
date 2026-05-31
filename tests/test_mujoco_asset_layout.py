@@ -22,3 +22,12 @@ def test_gripper_finger_bodies_are_not_double_offset():
     assert right_body.attrib.get("pos", "0 0 0") == "0 0 0"
     assert left_geom.attrib["pos"] == "0 0.022 0"
     assert right_geom.attrib["pos"] == "0 -0.022 0"
+
+
+def test_follow_target_body_is_mocap_target():
+    follow_scene = ROOT / "mujoco_assets" / "my6dof" / "scene_my6dof_follow_target.xml"
+    root = ET.parse(follow_scene).getroot()
+    target_body = root.find(".//body[@name='follow_target']")
+
+    assert target_body is not None
+    assert target_body.attrib.get("mocap") == "true"

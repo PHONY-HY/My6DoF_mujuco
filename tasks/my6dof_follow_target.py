@@ -25,13 +25,21 @@ class FollowTargetTask:
         self.target_body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "follow_target")
         self.target_mocap_id = int(self.model.body_mocapid[self.target_body_id])
         self.recorder = TrajectoryRecorder(record_path) if record_path is not None else None
+        self.sim_steps_per_viewer_frame = 10
         self._initialize_home_pose()
 
     def _initialize_home_pose(self) -> None:
         self.controller.set_arm_joint_positions(NEUTRAL_Q)
-        self.controller.set_gripper_opening(0.02)
-        self.data.mocap_quat[self.target_mocap_id] = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
+        self.controller.set_gripper_opening(0.0)
         mujoco.mj_forward(self.model, self.data)
+        target_position = self.controller.current_end_effector_position() + np.array([0.0, 0.0, 0.06], dtype=float)
+        self._set_target_pose(target_position)
+        mujoco.mj_forward(self.model, self.data)
+
+    def _set_target_pose(self, position: np.ndarray, quaternion: np.ndarray | None = None) -> None:
+        quaternion = np.array([1.0, 0.0, 0.0, 0.0], dtype=float) if quaternion is None else np.asarray(quaternion, dtype=float)
+        self.data.mocap_pos[self.target_mocap_id] = np.asarray(position, dtype=float)
+        self.data.mocap_quat[self.target_mocap_id] = quaternion
 
     def _target_pose(self) -> dict[str, list[float]]:
         return {
@@ -56,9 +64,9 @@ class FollowTargetTask:
             object_pose=None,
         )
 
-    def step_to_target(self, target_position: np.ndarray, controller_steps: int = 10) -> TrajectoryFrame:
+    def step_to_target(self, target_position: np.ndarray, controller_steps: int = 20) -> TrajectoryFrame:
         target_position = np.asarray(target_position, dtype=float)
-        self.data.mocap_pos[self.target_mocap_id] = target_position
+        self._set_target_pose(target_position)
         mujoco.mj_forward(self.model, self.data)
 
         for _ in range(controller_steps):
@@ -74,15 +82,19 @@ class FollowTargetTask:
         import mujoco.viewer
 
         with mujoco.viewer.launch_passive(self.model, self.data) as viewer:
+            print("Follow target interactive control: select the red sphere, then use Ctrl + right-drag to move the mocap target.")
             step_count = 0
             while viewer.is_running():
-                target_position = self.data.mocap_pos[self.target_mocap_id].copy()
-                self.controller.step_to_position(target_position)
-                mujoco.mj_step(self.model, self.data)
-                if self.recorder is not None:
-                    self.recorder.write(self._build_frame())
                 viewer.sync()
-                time.sleep(self.model.opt.timestep)
+                with viewer.lock():
+                    for _ in range(self.sim_steps_per_viewer_frame):
+                        target_position = self.data.mocap_pos[self.target_mocap_id].copy()
+                        self.controller.step_to_position(target_position)
+                        mujoco.mj_step(self.model, self.data)
+                        if self.recorder is not None:
+                            self.recorder.write(self._build_frame())
+                viewer.sync()
+                time.sleep(self.model.opt.timestep * self.sim_steps_per_viewer_frame)
                 step_count += 1
                 if max_steps is not None and step_count >= max_steps:
                     break

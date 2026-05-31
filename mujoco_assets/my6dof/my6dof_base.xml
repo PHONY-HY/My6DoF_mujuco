@@ -3,9 +3,9 @@
   <option gravity="0 0 -9.81" integrator="implicitfast" timestep="0.002"/>
 
   <default>
-    <joint damping="1.0" armature="0.01" limited="true"/>
+    <joint damping="2.0" armature="0.05" limited="true"/>
     <geom contype="1" conaffinity="1" friction="0.8 0.1 0.1" rgba="0.3 0.5 0.8 1"/>
-    <position kp="100"/>
+    <position kp="1200" kv="80"/>
   </default>
 
   <worldbody>
