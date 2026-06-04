@@ -152,3 +152,46 @@ class UR5StyleArm:
         jacobian = self._base_frame_jacobian(q)
         lhs = self._left_gram(jacobian) + damping * np.eye(6)
         return self._matvec(jacobian.T, self._solve_linear_system(lhs, ee_twist))
+
+    def inverse_kinematics_position_only(
+        self,
+        target_position: np.ndarray,
+        q0: np.ndarray | None = None,
+        max_iters: int = 200,
+        tol: float = 1e-6,
+    ) -> tuple[np.ndarray, dict[str, float | int]]:
+        target_position = np.asarray(target_position, dtype=float)
+        if target_position.shape != (3,):
+            raise ValueError(f"target_position must have shape (3,), got {target_position.shape}")
+
+        q = self.neutral_q.copy() if q0 is None else self._validate_vector(q0, name="q0").copy()
+        damping = 1e-6
+
+        for iteration in range(1, max_iters + 1):
+            current = self._frame_pose(q)
+            residual = target_position - np.asarray(current.translation, dtype=float)
+            final_error_norm = float(np.linalg.norm(residual))
+
+            if final_error_norm <= tol:
+                info = {
+                    "iterations": iteration,
+                    "final_error_norm": final_error_norm,
+                    "position_error_norm": final_error_norm,
+                    "orientation_error_norm": 0.0,
+                }
+                return q.copy(), info
+
+            jacobian = self._base_frame_jacobian(q)[:3, :]
+            lhs = self._left_gram(jacobian) + damping * np.eye(3)
+            delta_q = self._matvec(jacobian.T, self._solve_linear_system(lhs, residual))
+            q = np.clip(q + delta_q, self.lower_limits, self.upper_limits)
+
+        residual_twist = np.concatenate((residual, np.zeros(3, dtype=float)))
+        raise IKConvergenceError(
+            "position-only inverse kinematics did not converge",
+            final_q=q,
+            iterations=max_iters,
+            residual_twist=residual_twist,
+            position_error_norm=final_error_norm,
+            orientation_error_norm=0.0,
+        )

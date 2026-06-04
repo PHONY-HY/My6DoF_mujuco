@@ -1,11 +1,48 @@
+# Keep project source, tests, assets, and docs under version control.
+
+# Python bytecode and caches
 __pycache__/
+*.py[cod]
+*.pyc.*
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local Python environments
 .venv/
-.tmp/
-*.pyc
-dist/
-build/
-*.egg-info/
-pytest-cache-files-*/
-logs/
+venv/
+env/
+.conda-envs/
 temp-condarc-tuna.yml
+
+# Build and packaging outputs
+build/
+dist/
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+
+# Runtime logs and local execution artifacts
+logs/
+*.log
+MUJOCO_LOG.TXT
+pytest-cache-files-*/
+.tmp/
+tmp/
+
+# Local drafts and planning notes not needed in the public repo
+q&a.txt
+docs/superpowers/
+
+# Local tool-generated scratch files
+.superpowers/
+
+# Editor and OS noise
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini

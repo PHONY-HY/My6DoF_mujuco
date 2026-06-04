@@ -9,7 +9,14 @@ import numpy as np
 
 from mujoco_control import DifferentialIKController
 from tasks.recording import TrajectoryFrame, TrajectoryRecorder
+<<<<<<< HEAD
 from ur5_style_arm.robot_model import NEUTRAL_Q
+=======
+from ur5_style_arm import IKConvergenceError, UR5StyleArm
+
+
+FOLLOW_HOME_Q = np.deg2rad(np.array([0.0, 10.0, -110.0, 150.0, 0.0, 0.0], dtype=float))
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,10 +28,12 @@ class FollowTargetTask:
         self.interactive = interactive
         self.model = mujoco.MjModel.from_xml_path(str(SCENE_PATH))
         self.data = mujoco.MjData(self.model)
-        self.controller = DifferentialIKController(self.model, self.data, "ee_site")
+        self.controller = DifferentialIKController(self.model, self.data, "grasp_site")
+        self.kinematic_arm = UR5StyleArm()
         self.target_body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "follow_target")
         self.target_mocap_id = int(self.model.body_mocapid[self.target_body_id])
         self.recorder = TrajectoryRecorder(record_path) if record_path is not None else None
+<<<<<<< HEAD
         self.sim_steps_per_viewer_frame = 10
         self._initialize_home_pose()
 
@@ -33,6 +42,17 @@ class FollowTargetTask:
         self.controller.set_gripper_opening(0.0)
         mujoco.mj_forward(self.model, self.data)
         target_position = self.controller.current_end_effector_position() + np.array([0.0, 0.0, 0.06], dtype=float)
+=======
+        self.sim_steps_per_viewer_frame = 30
+        self.grasp_site_offset_local = np.array([0.0, 0.0, -0.05], dtype=float)
+        self._initialize_home_pose()
+
+    def _initialize_home_pose(self) -> None:
+        self.controller.set_arm_joint_positions(FOLLOW_HOME_Q)
+        self.controller.set_gripper_opening(0.0)
+        mujoco.mj_forward(self.model, self.data)
+        target_position = self.controller.current_end_effector_position() + np.array([0.0, 0.0, -0.05], dtype=float)
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
         self._set_target_pose(target_position)
         mujoco.mj_forward(self.model, self.data)
 
@@ -64,13 +84,41 @@ class FollowTargetTask:
             object_pose=None,
         )
 
+<<<<<<< HEAD
     def step_to_target(self, target_position: np.ndarray, controller_steps: int = 20) -> TrajectoryFrame:
         target_position = np.asarray(target_position, dtype=float)
         self._set_target_pose(target_position)
         mujoco.mj_forward(self.model, self.data)
+=======
+    def _plan_joint_target(self, target_position: np.ndarray) -> np.ndarray | None:
+        q_seed = self.controller.current_joint_positions()
+        current_rotation = self.data.site_xmat[self.controller.ee_site_id].reshape(3, 3).copy()
+        ee_target_position = np.asarray(target_position, dtype=float) - (
+            current_rotation @ self.grasp_site_offset_local
+        )
+        try:
+            q_target, _ = self.kinematic_arm.inverse_kinematics_position_only(
+                ee_target_position,
+                q0=q_seed,
+                max_iters=400,
+                tol=1e-6,
+            )
+            return q_target
+        except IKConvergenceError:
+            return None
+
+    def step_to_target(self, target_position: np.ndarray, controller_steps: int = 100) -> TrajectoryFrame:
+        target_position = np.asarray(target_position, dtype=float)
+        self._set_target_pose(target_position)
+        mujoco.mj_forward(self.model, self.data)
+        q_target = self._plan_joint_target(target_position)
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
 
         for _ in range(controller_steps):
-            self.controller.step_to_position(target_position)
+            if q_target is not None:
+                self.controller.command_arm_joint_positions(q_target)
+            else:
+                self.controller.step_to_position(target_position)
             mujoco.mj_step(self.model, self.data)
 
         frame = self._build_frame()
@@ -82,14 +130,29 @@ class FollowTargetTask:
         import mujoco.viewer
 
         with mujoco.viewer.launch_passive(self.model, self.data) as viewer:
+<<<<<<< HEAD
             print("Follow target interactive control: select the red sphere, then use Ctrl + right-drag to move the mocap target.")
+=======
+            print("Follow target interactive control: select the red sphere, then use Ctrl + right-drag to move the target body.")
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
             step_count = 0
             while viewer.is_running():
                 viewer.sync()
                 with viewer.lock():
+<<<<<<< HEAD
                     for _ in range(self.sim_steps_per_viewer_frame):
                         target_position = self.data.mocap_pos[self.target_mocap_id].copy()
                         self.controller.step_to_position(target_position)
+=======
+                    target_position = self.data.mocap_pos[self.target_mocap_id].copy()
+                    q_target = self._plan_joint_target(target_position)
+                    for _ in range(self.sim_steps_per_viewer_frame):
+                        target_position = self.data.mocap_pos[self.target_mocap_id].copy()
+                        if q_target is not None:
+                            self.controller.command_arm_joint_positions(q_target)
+                        else:
+                            self.controller.step_to_position(target_position)
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
                         mujoco.mj_step(self.model, self.data)
                         if self.recorder is not None:
                             self.recorder.write(self._build_frame())

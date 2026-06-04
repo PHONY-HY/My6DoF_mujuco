@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 from __future__ import annotations
+=======
+import json
+from pathlib import Path
+from uuid import uuid4
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
 
 import argparse
 from pathlib import Path
@@ -147,12 +153,19 @@ class PickPlaceTask:
                     break
 
 
+<<<<<<< HEAD
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the my6dof pick-and-place task.")
     parser.add_argument("--headless", action="store_true", help="Run the scripted episode headlessly.")
     parser.add_argument("--record-path", default=None, help="Optional JSONL output path.")
     parser.add_argument("--max-steps", type=int, default=None, help="Optional limit for interactive viewer steps.")
     args = parser.parse_args()
+=======
+def test_trajectory_recorder_writes_jsonl():
+    output_dir = ROOT / ".tmp" / "recording_test"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"trajectory_{uuid4().hex}.jsonl"
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
 
     task = PickPlaceTask(interactive=not args.headless, record_path=args.record_path)
     if args.headless:

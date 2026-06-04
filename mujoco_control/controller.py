@@ -11,6 +11,7 @@ class ControllerConfig:
     damping: float = 1e-4
     step_scale: float = 0.2
     position_gain: float = 1.0
+    orientation_gain: float = 0.6
 
 
 class DifferentialIKController:
@@ -91,6 +92,14 @@ class DifferentialIKController:
 
         return augmented[:, -1]
 
+    @staticmethod
+    def _orientation_error(current_rotation: np.ndarray, target_rotation: np.ndarray) -> np.ndarray:
+        return 0.5 * (
+            np.cross(current_rotation[:, 0], target_rotation[:, 0])
+            + np.cross(current_rotation[:, 1], target_rotation[:, 1])
+            + np.cross(current_rotation[:, 2], target_rotation[:, 2])
+        )
+
     def current_joint_positions(self) -> np.ndarray:
         return self.data.qpos[self.arm_qpos_adr].copy()
 
@@ -104,6 +113,15 @@ class DifferentialIKController:
             self.data.ctrl[actuator_id] = value
         return q.copy()
 
+<<<<<<< HEAD
+=======
+    def command_arm_joint_positions(self, q: np.ndarray) -> np.ndarray:
+        q = np.asarray(q, dtype=float)
+        for actuator_id, value in zip(self.arm_actuator_ids, q):
+            self.data.ctrl[actuator_id] = value
+        return q.copy()
+
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)
     def set_gripper_opening(self, opening: float) -> dict[str, float]:
         opening = float(np.clip(opening, 0.0, 0.025))
         self.data.ctrl[self.left_gripper_actuator_id] = opening
@@ -136,4 +154,45 @@ class DifferentialIKController:
         for actuator_id, value in zip(self.arm_actuator_ids, next_q):
             self.data.ctrl[actuator_id] = value
 
+<<<<<<< HEAD
         return next_q
+=======
+        return next_q
+
+    def step_to_pose(self, target_position: np.ndarray, target_rotation: np.ndarray) -> np.ndarray:
+        target_position = np.asarray(target_position, dtype=float)
+        target_rotation = np.asarray(target_rotation, dtype=float).reshape(3, 3)
+        mujoco.mj_forward(self.model, self.data)
+
+        jacp = np.zeros((3, self.model.nv), dtype=float)
+        jacr = np.zeros((3, self.model.nv), dtype=float)
+        mujoco.mj_jacSite(self.model, self.data, jacp, jacr, self.ee_site_id)
+
+        current_position = self.current_end_effector_position()
+        current_rotation = self.data.site_xmat[self.ee_site_id].reshape(3, 3).copy()
+
+        position_error = target_position - current_position
+        orientation_error = self._orientation_error(current_rotation, target_rotation)
+        task_error = np.concatenate(
+            (
+                self.config.position_gain * position_error,
+                self.config.orientation_gain * orientation_error,
+            )
+        )
+
+        task_jacobian = np.vstack((jacp[:, self.arm_qvel_adr], jacr[:, self.arm_qvel_adr]))
+        lhs = self._left_gram(task_jacobian) + self.config.damping * np.eye(6)
+        delta_q = self._matvec(task_jacobian.T, self._solve_linear_system(lhs, task_error))
+
+        current_q = self.current_joint_positions()
+        next_q = np.clip(
+            current_q + self.config.step_scale * delta_q,
+            self.arm_joint_ranges[:, 0],
+            self.arm_joint_ranges[:, 1],
+        )
+
+        for actuator_id, value in zip(self.arm_actuator_ids, next_q):
+            self.data.ctrl[actuator_id] = value
+
+        return next_q
+>>>>>>> 1f097dd (Update .gitignore and restage clean files)

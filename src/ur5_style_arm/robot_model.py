@@ -27,7 +27,7 @@ JOINT_LIMITS = np.deg2rad(
     )
 )
 
-NEUTRAL_Q = np.deg2rad(np.array([0.0, -90.0, 90.0, -90.0, 0.0, 0.0], dtype=float))
+NEUTRAL_Q = np.deg2rad(np.array([0.0, -70.0, 100.0, -120.0, 0.0, 0.0], dtype=float))
 
 
 def _append_body(model: pin.Model, joint_id: int) -> None:
