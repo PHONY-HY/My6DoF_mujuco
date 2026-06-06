@@ -1,37 +1,41 @@
 # My6DOF MuJoCo Project
 
-Standalone 6DOF robot arm project that combines:
+`My6DOF MuJoCo Project` is a standalone 6-DOF robot-arm repository that combines:
 
-- a Pinocchio kinematics layer for forward/inverse kinematics and verification
-- a MuJoCo simulation layer for task execution
-- two `wxai`-inspired tasks:
-  - `follow_target`
-  - `pick_place`
-- lightweight JSONL trajectory recording
+- a Pinocchio-backed kinematics package exposed as `ur5_style_arm`
+- MuJoCo robot and scene assets for a custom `my6dof` arm
+- a differential IK control layer for target tracking and task execution
+- task modules for `follow_target` and `pick_place`
+- pick-place planning, evaluation, and JSONL trajectory recording utilities
 
-This project is organized as an independent codebase for your own GitHub repository. It is inspired by the `wxai` structure from the Trossen Robotics ecosystem, but it does **not** modify or depend on editing the upstream repositories in-place.
+The repository is organized as an independent project. It is inspired by the structure of the Trossen / `wxai` ecosystem, but it does not depend on editing upstream repositories in place.
 
-## Features
+## Current Scope
 
-- Custom `my6dof` MuJoCo robot family
-- 6DOF arm geometry preserved from the earlier Pinocchio implementation
-- `wxai`-style gripper integration
-- Interactive target-following task
-- Scripted pick-and-place task
-- Trajectory recording with:
-  - `timestamp`
-  - `joint_positions`
-  - `gripper_state`
-  - `target_pose`
-  - `object_pose`
-- Pinocchio-to-MuJoCo end-effector consistency checks
+The current codebase focuses on:
+
+- Pinocchio forward kinematics, inverse kinematics, and velocity kinematics
+- MuJoCo scene loading and end-effector consistency checks
+- target-following in simulation
+- scripted and interactive pick-place flows
+- explicit pick-place stage planning and post-run evaluation
+- regression tests for assets, kinematics, task flow, and recording
+
+The current codebase does not include:
+
+- replay tooling for recorded trajectories
+- imitation-learning data pipelines
+- upstream Trossen repository modifications
+- hardware drivers or external input devices
 
 ## Repository Layout
 
 ```text
 .
+|- demo.py
 |- docs/
-|  `- my6dof_mujoco_usage.md
+|  |- my6dof_mujoco_usage.md
+|  `- my6dof_qa_rewritten.md
 |- mujoco_assets/
 |  `- my6dof/
 |     |- my6dof_base.xml
@@ -42,6 +46,8 @@ This project is organized as an independent codebase for your own GitHub reposit
 |  `- controller.py
 |- src/
 |  `- ur5_style_arm/
+|     |- __init__.py
+|     |- exceptions.py
 |     |- kinematics.py
 |     |- mujoco_verify.py
 |     |- pose_utils.py
@@ -49,32 +55,65 @@ This project is organized as an independent codebase for your own GitHub reposit
 |- tasks/
 |  |- my6dof_follow_target.py
 |  |- my6dof_pick_place.py
+|  |- pick_place_evaluation.py
+|  |- pick_place_plan.py
 |  `- recording.py
 |- tests/
+|- README.md
 `- pyproject.toml
 ```
 
-## Runtime Environment
+## Main Modules
 
-Recommended runtime:
+### `src/ur5_style_arm/`
+
+Pinocchio-based kinematics package with the public API:
+
+- `UR5StyleArm`
+- `IKConvergenceError`
+
+It provides:
+
+- forward kinematics
+- full-pose inverse kinematics
+- inverse kinematics error reporting
+- forward velocity and inverse velocity utilities
+- pose conversion helpers
+- MuJoCo end-effector comparison helpers
+
+### `mujoco_control/controller.py`
+
+Control helpers for the MuJoCo scenes, including:
+
+- differential IK stepping to a target position
+- pose-aware stepping to a target position and orientation
+- direct actuator command helpers
+- gripper opening commands
+
+### `tasks/`
+
+Task-level entry points and utilities:
+
+- `my6dof_follow_target.py`: follow-target task with headless and interactive modes
+- `my6dof_pick_place.py`: pick-place task with scripted episode execution and interactive stepping
+- `pick_place_plan.py`: explicit multi-stage pick-place plan generation
+- `pick_place_evaluation.py`: episode success and failure-reason evaluation
+- `recording.py`: JSONL trajectory recording
+
+## Environment And Installation
+
+Recommended baseline:
 
 - Python `3.10+`
-- MuJoCo `3.2.3`
+- MuJoCo `>=3.2`
 - `dm_control`
 - `dm_env`
-- `numpy`
-- `pinocchio`
+- `numpy>=1.26`
+- Pinocchio
 
-Your prepared VMware environment is the recommended place to actually run the MuJoCo tasks:
+Important: `pinocchio` is required by `src/ur5_style_arm/kinematics.py`, but it is not currently declared in `pyproject.toml`. Use a robotics environment where Pinocchio is already installed before running the kinematics package or MuJoCo tasks.
 
-```bash
-source trossen_mujoco_env/bin/activate
-python -m pip install -e .[dev]
-```
-
-## Installation
-
-Inside your MuJoCo-ready environment:
+Inside your prepared environment:
 
 ```bash
 python -m pip install -e .[dev]
@@ -82,7 +121,22 @@ python -m pip install -e .[dev]
 
 ## Quick Start
 
-### 1. Run Follow Target
+### 1. Package smoke demo
+
+Run the local kinematics demo:
+
+```bash
+python demo.py
+```
+
+This prints:
+
+- a forward-kinematics transform
+- an inverse-kinematics solution
+- a forward twist
+- an inverse-velocity solution
+
+### 2. Follow target
 
 Headless:
 
@@ -96,7 +150,7 @@ Interactive viewer:
 python -m tasks.my6dof_follow_target --record-path logs/follow.jsonl
 ```
 
-### 2. Run Pick And Place
+### 3. Pick and place
 
 Headless scripted episode:
 
@@ -110,9 +164,16 @@ Interactive viewer:
 python -m tasks.my6dof_pick_place --record-path logs/pick.jsonl
 ```
 
+The headless pick-place entry point returns an evaluated episode payload that includes:
+
+- `frames`
+- `grasp_success`
+- `episode_success`
+- `failure_reason`
+
 ## Recording Format
 
-Trajectory data is written as JSONL. Each line contains one frame with:
+Trajectory data is written as JSONL. Each frame records:
 
 - `timestamp`
 - `joint_positions`
@@ -120,60 +181,47 @@ Trajectory data is written as JSONL. Each line contains one frame with:
 - `target_pose`
 - `object_pose`
 
-This project currently keeps **recording only**. It does not include replay or full dataset-pipeline tooling.
+The repository currently supports recording only. It does not yet include replay or dataset export pipelines.
 
-## Pinocchio Layer
+## Testing
 
-The Pinocchio layer remains part of the project for:
-
-- forward kinematics
-- inverse kinematics
-- velocity kinematics
-- MuJoCo cross-verification
-
-It is used as an offline reference and validation tool rather than the online MuJoCo task controller.
-
-## Verification
-
-Run all local tests:
+Run the full test suite:
 
 ```bash
 python -m pytest -q
 ```
 
-Run the MuJoCo/Pinocchio consistency test specifically:
+Useful focused checks:
 
 ```bash
+python -m pytest tests/test_package_import.py -q
+python -m pytest tests/test_demo_smoke.py -q
 python -m pytest tests/test_mujoco_pinocchio_consistency.py -q
+python -m pytest tests/test_pick_place_plan.py -q
+python -m pytest tests/test_pick_place_evaluation.py -q
 ```
 
-Note:
+Coverage in `tests/` currently includes:
 
-- MuJoCo-dependent tests may be skipped automatically in environments where `mujoco` is not installed.
-- The intended full execution environment is your VMware `trossen_mujoco_env`.
+- package import and demo smoke tests
+- FK / IK / velocity kinematics tests
+- MuJoCo asset and scene layout checks
+- MuJoCo / Pinocchio consistency checks
+- follow-target smoke coverage
+- pick-place plan, evaluation, and interactive-stability checks
+- trajectory recording tests
 
-## Project Scope
+## Notes
 
-Included:
-
-- independent `my6dof` robot family
-- `follow_target`
-- `pick_place`
-- JSONL trajectory recording
-- Pinocchio verification helpers
-
-Not included:
-
-- upstream Trossen repository modifications
-- replay pipeline
-- imitation-learning dataset pipeline
-- external input devices
+- `docs/my6dof_mujoco_usage.md` contains a concise usage-oriented companion document.
+- `docs/my6dof_qa_rewritten.md` contains a project Q&A / explanation draft aligned to the repository.
+- The MuJoCo task stack is under active iteration, so task logic, stage definitions, and evaluation rules are more detailed than in the earliest version of this repository.
 
 ## Related References
 
 - [Trossen Robotics arm description](https://github.com/TrossenRobotics/trossen_arm_description)
 - [Trossen Robotics MuJoCo tasks](https://github.com/TrossenRobotics/trossen_arm_mujoco)
 
-## License / Ownership
+## License
 
-You can publish this repository under your own GitHub account as an independent project. Before making it public, add the license of your choice and verify that any reused upstream assets or naming remain consistent with your intended distribution terms.
+Choose and add the license that matches your intended distribution before publishing the repository publicly.
