@@ -15,7 +15,7 @@ class ControllerConfig:
 
 
 class DifferentialIKController:
-    """Lightweight position-only differential IK controller for the my6dof arm."""
+    """Lightweight differential IK controller for the my6dof arm."""
 
     def __init__(
         self,
@@ -113,15 +113,12 @@ class DifferentialIKController:
             self.data.ctrl[actuator_id] = value
         return q.copy()
 
-<<<<<<< HEAD
-=======
     def command_arm_joint_positions(self, q: np.ndarray) -> np.ndarray:
         q = np.asarray(q, dtype=float)
         for actuator_id, value in zip(self.arm_actuator_ids, q):
             self.data.ctrl[actuator_id] = value
         return q.copy()
 
->>>>>>> 1f097dd (Update .gitignore and restage clean files)
     def set_gripper_opening(self, opening: float) -> dict[str, float]:
         opening = float(np.clip(opening, 0.0, 0.025))
         self.data.ctrl[self.left_gripper_actuator_id] = opening
@@ -154,9 +151,6 @@ class DifferentialIKController:
         for actuator_id, value in zip(self.arm_actuator_ids, next_q):
             self.data.ctrl[actuator_id] = value
 
-<<<<<<< HEAD
-        return next_q
-=======
         return next_q
 
     def step_to_pose(self, target_position: np.ndarray, target_rotation: np.ndarray) -> np.ndarray:
@@ -195,4 +189,3 @@ class DifferentialIKController:
             self.data.ctrl[actuator_id] = value
 
         return next_q
->>>>>>> 1f097dd (Update .gitignore and restage clean files)

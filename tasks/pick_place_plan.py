@@ -3,13 +3,10 @@ from __future__ import annotations
 import numpy as np
 
 
-<<<<<<< HEAD
-=======
 GRIPPER_OPENING_OPEN = 0.025
 GRIPPER_OPENING_CLOSE = 0.0145
 
 
->>>>>>> 1f097dd (Update .gitignore and restage clean files)
 def build_pick_place_plan(
     pick_position: np.ndarray,
     cube_position: np.ndarray,
@@ -19,23 +16,6 @@ def build_pick_place_plan(
     cube_position = np.asarray(cube_position, dtype=float)
     place_position = np.asarray(place_position, dtype=float)
 
-<<<<<<< HEAD
-    hover_position = pick_position + np.array([0.0, 0.0, 0.08], dtype=float)
-    grasp_position = cube_position + np.array([0.0, 0.0, 0.05], dtype=float)
-    lift_position = cube_position + np.array([0.0, 0.0, 0.15], dtype=float)
-    place_hover = place_position + np.array([0.0, 0.0, 0.08], dtype=float)
-
-    return [
-        {"name": "hover_pick", "target_position": hover_position, "gripper_opening": 0.04},
-        {"name": "descend_pick", "target_position": grasp_position, "gripper_opening": 0.04},
-        {"name": "close_gripper", "target_position": grasp_position, "gripper_opening": 0.0},
-        {"name": "lift", "target_position": lift_position, "gripper_opening": 0.0},
-        {"name": "hover_place", "target_position": place_hover, "gripper_opening": 0.0},
-        {"name": "descend_place", "target_position": place_position, "gripper_opening": 0.0},
-        {"name": "open_gripper", "target_position": place_position, "gripper_opening": 0.04},
-        {"name": "retreat", "target_position": place_hover, "gripper_opening": 0.04},
-    ]
-=======
     hover_position = cube_position + np.array([0.0, 0.0, 0.06], dtype=float)
     grasp_position = cube_position.copy()
     transport_height = max(float(cube_position[2]), float(place_position[2])) + 0.10
@@ -61,4 +41,3 @@ def build_pick_place_plan(
         {"name": "release_place", "target_position": place_contact, "gripper_opening": GRIPPER_OPENING_OPEN, "controller_steps": 40, "position_tolerance": 0.02, "control_mode": "pose"},
         {"name": "retreat", "target_position": place_hover, "gripper_opening": GRIPPER_OPENING_OPEN, "controller_steps": 120, "position_tolerance": 0.03, "control_mode": "pose"},
     ]
->>>>>>> 1f097dd (Update .gitignore and restage clean files)

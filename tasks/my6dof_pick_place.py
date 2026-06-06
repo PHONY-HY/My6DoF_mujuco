@@ -8,10 +8,6 @@ import mujoco
 import numpy as np
 
 from mujoco_control import DifferentialIKController
-<<<<<<< HEAD
-from tasks.pick_place_plan import build_pick_place_plan
-from tasks.recording import TrajectoryFrame, TrajectoryRecorder
-=======
 from tasks.pick_place_evaluation import (
     PickPlaceEpisodeResult,
     evaluate_pick_place_episode,
@@ -26,7 +22,6 @@ from tasks.pick_place_plan import (
 )
 from tasks.recording import TrajectoryFrame, TrajectoryRecorder
 from ur5_style_arm import IKConvergenceError, UR5StyleArm
->>>>>>> 1f097dd (Update .gitignore and restage clean files)
 from ur5_style_arm.robot_model import NEUTRAL_Q
 
 
@@ -57,20 +52,6 @@ class PickPlaceTask:
         self.grasp_site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "grasp_site")
         self.recorder = TrajectoryRecorder(record_path) if record_path is not None else None
 
-<<<<<<< HEAD
-        self.cube_attached = False
-        self.attach_offset = np.array([0.0, 0.0, -0.05], dtype=float)
-        self.phase_index = 0
-        self.phase_tick = 0
-        self.phase_duration = 35
-        self._initialize_home_pose()
-
-    def _initialize_home_pose(self) -> None:
-        self.controller.set_arm_joint_positions(NEUTRAL_Q)
-        self.controller.set_gripper_opening(0.04)
-        self.data.mocap_quat[self.place_target_mocap_id] = np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
-        mujoco.mj_forward(self.model, self.data)
-=======
         self.phase_index = 0
         self.phase_tick = 0
         self.phase_duration = 35
@@ -87,7 +68,6 @@ class PickPlaceTask:
         self.active_stage_start_position = np.zeros(3, dtype=float)
         self.active_contact_descent_hold_z: float | None = None
         self._initialize_home_pose()
->>>>>>> 1f097dd (Update .gitignore and restage clean files)
 
     def _initialize_home_pose(self) -> None:
         self.controller.set_arm_joint_positions(NEUTRAL_Q)
@@ -191,14 +171,12 @@ class PickPlaceTask:
         self.current_target_position = target_position.copy()
         self._set_gripper(gripper_opening)
         mujoco.mj_forward(self.model, self.data)
-<<<<<<< HEAD
-=======
         q_target = joint_target
         should_use_joint_target = control_mode == "position" and float(gripper_opening) > 0.02
         if should_use_joint_target and q_target is None:
             current_rotation = self.data.site_xmat[self.grasp_site_id].reshape(3, 3).copy()
             q_target = self._plan_joint_target(target_position, target_rotation=current_rotation)
->>>>>>> 1f097dd (Update .gitignore and restage clean files)
+
         for _ in range(controller_steps):
             if control_mode == "position":
                 if q_target is not None and should_use_joint_target:
@@ -333,7 +311,7 @@ class PickPlaceTask:
         else:
             if q_target is not None and freeze_arm:
                 self.current_target_position = np.asarray(step["target_position"], dtype=float).copy()
-                frame: TrajectoryFrame | None = None
+                frame = None
                 for _ in range(int(step["controller_steps"])):
                     self._set_gripper(float(step["gripper_opening"]))
                     self.controller.set_arm_joint_positions(q_target)
@@ -409,7 +387,7 @@ class PickPlaceTask:
         distance = self._distance_to_target(step["target_position"])
         return frame, distance
 
-    def _execute_stage(self, step: dict[str, np.ndarray | float | str]) -> tuple[TrajectoryFrame, float, bool]:
+    def _execute_stage(self, step: dict[str, np.ndarray | float | str]) -> tuple[TrajectoryFrame, float, bool, bool]:
         self.current_step_name = str(step["name"])
         if self.current_step_name == "descend_place_contact":
             return self._run_contact_descent_stage(step)
@@ -569,24 +547,6 @@ class PickPlaceTask:
 
     def run_episode(self) -> PickPlaceEpisodeResult:
         frames: list[TrajectoryFrame] = []
-<<<<<<< HEAD
-
-        pick_position = self.model.body_pos[self.pick_target_body_id].copy()
-        cube_position = self.data.xpos[self.cube_body_id].copy()
-        place_position = self.data.mocap_pos[self.place_target_mocap_id].copy()
-
-        for step in build_pick_place_plan(pick_position, cube_position, place_position):
-            frames.append(
-                self._step_with_target(
-                    step["target_position"],
-                    gripper_opening=step["gripper_opening"],
-                )
-            )
-            if step["name"] == "close_gripper":
-                self._try_attach_cube()
-            if step["name"] == "open_gripper":
-                self.cube_attached = False
-=======
         place_position = self.data.mocap_pos[self.place_target_mocap_id].copy()
 
         for step in self._build_episode_plan():
@@ -615,7 +575,6 @@ class PickPlaceTask:
                     episode_success=False,
                     failure_reason=failure_reason,
                 )
->>>>>>> 1f097dd (Update .gitignore and restage clean files)
 
         return evaluate_pick_place_episode(frames, self.initial_cube_height, place_position)
 
@@ -627,32 +586,11 @@ class PickPlaceTask:
             step_count = 0
             reported_failure: str | None = None
             while viewer.is_running():
-<<<<<<< HEAD
-                plan = build_pick_place_plan(
-                    self.model.body_pos[self.pick_target_body_id].copy(),
-                    self.data.xpos[self.cube_body_id].copy(),
-                    self.data.mocap_pos[self.place_target_mocap_id].copy(),
-                )
-                step = plan[self.phase_index]
-                self._step_with_target(step["target_position"], gripper_opening=step["gripper_opening"], controller_steps=1)
-
-                if step["name"] == "close_gripper" and self.phase_tick == self.phase_duration // 2:
-                    self._try_attach_cube()
-                if step["name"] == "open_gripper" and self.phase_tick == 0:
-                    self.cube_attached = False
-
-                self.phase_tick += 1
-                if self.phase_tick >= self.phase_duration:
-                    self.phase_tick = 0
-                    if self.phase_index < len(plan) - 1:
-                        self.phase_index += 1
-=======
                 if self.failure_reason is None:
                     self._interactive_tick()
                 elif self.failure_reason != reported_failure:
                     print(f"Pick-place episode stopped: {self.failure_reason}")
                     reported_failure = self.failure_reason
->>>>>>> 1f097dd (Update .gitignore and restage clean files)
                 viewer.sync()
                 time.sleep(self.model.opt.timestep)
                 step_count += 1
